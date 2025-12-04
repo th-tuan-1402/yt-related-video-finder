@@ -1,0 +1,96 @@
+import { google } from 'googleapis';
+import { VideoMetadata, RelatedVideo } from '@/types/youtube';
+
+const youtube = google.youtube({
+  version: 'v3',
+  auth: process.env.YOUTUBE_API_KEY,
+});
+
+/**
+ * Fetch metadata for a specific video
+ */
+export async function fetchVideoMetadata(videoId: string): Promise<VideoMetadata | null> {
+  try {
+    const response = await youtube.videos.list({
+      part: ['snippet'],
+      id: [videoId],
+    });
+
+    if (!response.data.items || response.data.items.length === 0) {
+      return null;
+    }
+
+    const video = response.data.items[0];
+    const snippet = video.snippet!;
+
+    return {
+      videoId,
+      title: snippet.title || '',
+      description: snippet.description || '',
+      thumbnail: snippet.thumbnails?.high?.url || snippet.thumbnails?.medium?.url || '',
+      channelTitle: snippet.channelTitle || '',
+      tags: snippet.tags || [],
+      categoryId: snippet.categoryId || '',
+    };
+  } catch (error) {
+    console.error('Error fetching video metadata:', error);
+    throw error;
+  }
+}
+
+/**
+ * Search for related videos based on video metadata
+ */
+export async function searchRelatedVideos(
+  videoId: string,
+  maxResults: number = 10
+): Promise<RelatedVideo[]> {
+  try {
+    // First, get the original video's metadata
+    const metadata = await fetchVideoMetadata(videoId);
+
+    if (!metadata) {
+      throw new Error('Video not found');
+    }
+
+    // Build search query from tags or title
+    let searchQuery: string;
+    if (metadata.tags && metadata.tags.length > 0) {
+      // Use first 5 tags for more accurate results
+      searchQuery = metadata.tags.slice(0, 5).join(' ');
+    } else {
+      // Fallback to title if no tags
+      searchQuery = metadata.title;
+    }
+
+    // Search for related videos
+    const searchResponse = await youtube.search.list({
+      part: ['snippet'],
+      q: searchQuery,
+      type: ['video'],
+      maxResults: maxResults + 5, // Get extra to filter out the original
+      order: 'relevance',
+      relevanceLanguage: 'vi', // Prioritize Vietnamese content
+    });
+
+    if (!searchResponse.data.items) {
+      return [];
+    }
+
+    // Filter out the original video and map results
+    const relatedVideos: RelatedVideo[] = searchResponse.data.items
+      .filter((item) => item.id?.videoId && item.id.videoId !== videoId)
+      .slice(0, maxResults)
+      .map((item) => ({
+        videoId: item.id!.videoId!,
+        title: item.snippet!.title || '',
+        thumbnail: item.snippet!.thumbnails?.medium?.url || item.snippet!.thumbnails?.default?.url || '',
+        description: item.snippet!.description || '',
+      }));
+
+    return relatedVideos;
+  } catch (error) {
+    console.error('Error searching related videos:', error);
+    throw error;
+  }
+}
