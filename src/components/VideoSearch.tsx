@@ -81,7 +81,7 @@ export default function VideoSearch({ onSearch, isLoading }: VideoSearchProps) {
                 Đang tìm...
               </span>
             ) : (
-              'Tìm Video Liên Quan'
+              '🔍'
             )}
           </button>
         </div>

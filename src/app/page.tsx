@@ -82,8 +82,8 @@ export default function Home() {
       {/* Content */}
       <div className="relative z-10">
         {/* Header */}
-        <header className="pt-16 pb-12 px-6">
-          <div className="max-w-7xl mx-auto text-center">
+        <header className="pt-16 pb-12 px-6 flex justify-center">
+          <div className="max-w-7xl flex flex-col items-center">
             <h1 className="text-5xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-[var(--color-accent-primary)] via-[var(--color-accent-secondary)] to-[var(--color-accent-tertiary)] bg-clip-text text-transparent">
               YouTube Related Videos Finder
             </h1>
@@ -99,14 +99,14 @@ export default function Home() {
         </header>
 
         {/* Search Section */}
-        <section className="px-6 pb-12">
+        <section className="px-6 pb-12 flex justify-center">
           <VideoSearch onSearch={handleSearch} isLoading={isLoadingMetadata || isLoadingRelated} />
         </section>
 
         {/* Error Message */}
         {error && (
-          <section className="px-6 pb-12">
-            <div className="max-w-3xl mx-auto px-6 py-4 rounded-2xl glass border-l-4 border-red-500">
+          <section className="px-6 pb-12 flex justify-center">
+            <div className="w-full max-w-3xl px-6 py-4 rounded-2xl glass border-l-4 border-red-500">
               <p className="text-red-400">
                 <span className="font-semibold">Lỗi:</span> {error}
               </p>
@@ -116,7 +116,7 @@ export default function Home() {
 
         {/* Video Details Section */}
         {videoMetadata && (
-          <section className="px-6 pb-12">
+          <section className="px-6 pb-12 flex justify-center">
             <VideoDetails
               video={videoMetadata}
               onViewDetails={() => setIsModalOpen(true)}
@@ -126,7 +126,7 @@ export default function Home() {
 
         {/* Related Videos Section */}
         {(relatedVideos.length > 0 || isLoadingRelated) && (
-          <section className="px-6 pb-12">
+          <section className="px-6 pb-12 flex justify-center">
             <RelatedVideos videos={relatedVideos} isLoading={isLoadingRelated} />
           </section>
         )}
