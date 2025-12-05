@@ -4,24 +4,31 @@ import { useState } from 'react';
 import VideoSearch from '@/components/VideoSearch';
 import VideoDetails from '@/components/VideoDetails';
 import RelatedVideos from '@/components/RelatedVideos';
+import RelatedChannels from '@/components/RelatedChannels';
+import Tabs from '@/components/Tabs';
 import MetadataModal from '@/components/MetadataModal';
-import { VideoMetadata, RelatedVideo } from '@/types/youtube';
+import { VideoMetadata, RelatedVideo, ChannelMetadata } from '@/types/youtube';
 import { getCachedMetadata, cacheMetadata, getCachedRelatedVideos, cacheRelatedVideos } from '@/lib/cache';
 
 export default function Home() {
   const [videoMetadata, setVideoMetadata] = useState<VideoMetadata | null>(null);
   const [relatedVideos, setRelatedVideos] = useState<RelatedVideo[]>([]);
+  const [relatedChannels, setRelatedChannels] = useState<ChannelMetadata[]>([]);
   const [isLoadingMetadata, setIsLoadingMetadata] = useState(false);
   const [isLoadingRelated, setIsLoadingRelated] = useState(false);
+  const [isLoadingChannels, setIsLoadingChannels] = useState(false);
   const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'videos' | 'channels'>('videos');
 
   const handleSearch = async (videoId: string) => {
     setError('');
     setVideoMetadata(null);
     setRelatedVideos([]);
+    setRelatedChannels([]);
     setIsLoadingMetadata(true);
     setIsLoadingRelated(true);
+    setIsLoadingChannels(true);
 
     try {
       // Check cache for metadata
@@ -67,10 +74,24 @@ export default function Home() {
         console.log('💾 Cached related videos for:', videoId);
         setIsLoadingRelated(false);
       }
+
+      // Fetch related channels from API
+      const channelsResponse = await fetch(`/api/related-channels?videoId=${videoId}`);
+
+      if (!channelsResponse.ok) {
+        const errorData = await channelsResponse.json();
+        throw new Error(errorData.error || 'Failed to fetch related channels');
+      }
+
+      const channels: ChannelMetadata[] = await channelsResponse.json();
+      setRelatedChannels(channels);
+      console.log('✅ Fetched related channels for:', videoId);
+      setIsLoadingChannels(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       setIsLoadingMetadata(false);
       setIsLoadingRelated(false);
+      setIsLoadingChannels(false);
     }
   };
 
@@ -124,10 +145,21 @@ export default function Home() {
           </section>
         )}
 
-        {/* Related Videos Section */}
-        {(relatedVideos.length > 0 || isLoadingRelated) && (
+        {/* Tabs Section */}
+        {videoMetadata && (
+          <section className="px-6 pb-8 flex justify-center">
+            <Tabs activeTab={activeTab} onTabChange={setActiveTab} />
+          </section>
+        )}
+
+        {/* Related Content Section (Videos or Channels based on active tab) */}
+        {videoMetadata && (
           <section className="px-6 pb-12 flex justify-center">
-            <RelatedVideos videos={relatedVideos} isLoading={isLoadingRelated} />
+            {activeTab === 'videos' ? (
+              <RelatedVideos videos={relatedVideos} isLoading={isLoadingRelated} />
+            ) : (
+              <RelatedChannels channels={relatedChannels} isLoading={isLoadingChannels} />
+            )}
           </section>
         )}
 

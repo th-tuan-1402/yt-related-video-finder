@@ -48,3 +48,14 @@ export interface RelatedVideo {
   thumbnail: string;
   description: string;
 }
+
+export interface ChannelMetadata {
+  id: string;
+  title: string;
+  customUrl: string;
+  description: string;
+  thumbnail: string;
+  subscriberCount: string;
+  videoCount: string;
+  viewCount?: string;
+}
