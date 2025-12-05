@@ -60,8 +60,15 @@ export default function Home() {
 
       // Check cache for related videos
       const cachedRelated = getCachedRelatedVideos(videoId);
-      // Check if cached data has viewCount (new format) - if not, invalidate cache
-      const hasViewCountInCache = cachedRelated && cachedRelated.length > 0 && cachedRelated.some(v => v.viewCount !== undefined);
+      // Check if cached data has viewCount (new format) - verify that all or most videos have it
+      // Require at least 80% of videos to have viewCount, or all if there are 5 or fewer videos
+      const hasViewCountInCache = cachedRelated && cachedRelated.length > 0 && (() => {
+        const videosWithViewCount = cachedRelated.filter(v => v.viewCount !== undefined).length;
+        const threshold = cachedRelated.length <= 5 
+          ? cachedRelated.length // All videos must have viewCount if 5 or fewer
+          : Math.ceil(cachedRelated.length * 0.8); // At least 80% must have viewCount
+        return videosWithViewCount >= threshold;
+      })();
       
       if (cachedRelated && hasViewCountInCache) {
         console.log('📦 Using cached related videos for:', videoId);
@@ -145,7 +152,7 @@ export default function Home() {
 
         {/* Search Section */}
         <section className="px-6 pb-12 flex justify-center">
-          <VideoSearch onSearch={handleSearch} isLoading={isLoadingMetadata || isLoadingRelated} />
+          <VideoSearch onSearch={handleSearch} isLoading={isLoadingMetadata || isLoadingRelated || isLoadingChannels} />
         </section>
 
         {/* Error Message */}
