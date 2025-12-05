@@ -34,7 +34,7 @@ export async function GET(request: Request) {
     const tags = videoSnippet.tags || [];
 
     // Strategy: Use first 3 tags, or channel title if no tags
-    const searchQuery = tags.length > 0 ? tags.slice(0, 3).join(' ') : videoSnippet.channelTitle;
+    const searchQuery = tags.length > 0 ? tags.slice(0, 3).join(' ') : (videoSnippet.channelTitle || '');
 
     console.log(`[RelatedChannels] Video: ${videoId}, Channel: ${videoSnippet.channelTitle}`);
     console.log(`[RelatedChannels] Searching with query: ${searchQuery}`);
