@@ -1,10 +1,17 @@
 import { google } from 'googleapis';
 import { VideoMetadata, RelatedVideo } from '@/types/youtube';
 
-const youtube = google.youtube({
-  version: 'v3',
-  auth: process.env.YOUTUBE_API_KEY,
-});
+/**
+ * Get YouTube API client instance
+ */
+export function getYoutubeClient() {
+  return google.youtube({
+    version: 'v3',
+    auth: process.env.YOUTUBE_API_KEY,
+  });
+}
+
+const youtube = getYoutubeClient();
 
 /**
  * Fetch metadata for a specific video

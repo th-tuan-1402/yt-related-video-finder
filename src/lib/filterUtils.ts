@@ -54,8 +54,6 @@ function parseCount(count: string | undefined): number {
   if (!count || count === 'Hidden') {
     return 0;
   }
-  // Use Number() instead of parseInt() to handle large numbers correctly
-  // parseInt() can lose precision for very large numbers
   const parsed = Number(count);
   if (isNaN(parsed)) {
     console.warn('[Filter Utils] Failed to parse count:', count);
@@ -65,57 +63,60 @@ function parseCount(count: string | undefined): number {
 }
 
 /**
+ * Check if a value is within the specified range
+ */
+function checkRange(value: number, range: { min: number; max: number }): boolean {
+  const passesMin = value >= range.min;
+  const passesMax = range.max === Infinity ? true : value <= range.max;
+  return passesMin && passesMax;
+}
+
+/**
+ * Generic function to filter items by range based on a count getter
+ */
+function filterByRange<T>(
+  items: T[],
+  range: { min: number; max: number },
+  getCount: (item: T) => string | undefined
+): T[] {
+  return items.filter((item) => {
+    const count = parseCount(getCount(item));
+    return checkRange(count, range);
+  });
+}
+
+/**
+ * Generic function to sort items by count
+ */
+function sortByCount<T>(
+  items: T[],
+  getCount: (item: T) => string | undefined,
+  ascending: boolean = false
+): T[] {
+  const sorted = [...items];
+  return sorted.sort((a, b) => {
+    const countA = parseCount(getCount(a));
+    const countB = parseCount(getCount(b));
+    return ascending ? countA - countB : countB - countA;
+  });
+}
+
+/**
  * Filter videos based on filter options
  */
 export function filterVideos(videos: RelatedVideo[], filters: FilterOptions): RelatedVideo[] {
   let filtered = [...videos];
 
   // Filter by view count
-  if (filters.minViews && filters.minViews !== 'Tất cả' && filters.minViews !== undefined) {
+  if (filters.minViews && filters.minViews !== 'Tất cả') {
     const viewRange = parseFilterRange(filters.minViews);
-    console.log('[Filter Debug] View filter:', {
-      filterOption: filters.minViews,
-      range: viewRange,
-      totalVideos: videos.length,
-    });
-    
-    filtered = filtered.filter((video) => {
-      const views = parseCount(video.viewCount);
-      // Handle Infinity comparison properly
-      const passesMin = views >= viewRange.min;
-      const passesMax = viewRange.max === Infinity ? true : views <= viewRange.max;
-      const passes = passesMin && passesMax;
-      
-      // Debug log for ALL videos to see what's happening
-      console.log('[Filter Debug] Video:', {
-        videoId: video.videoId,
-        title: video.title.substring(0, 50),
-        rawViewCount: video.viewCount,
-        viewCountType: typeof video.viewCount,
-        parsedViews: views,
-        range: viewRange,
-        passesMin,
-        passesMax,
-        passes,
-      });
-      
-      return passes;
-    });
-    
-    console.log('[Filter Debug] After view filter:', {
-      filteredCount: filtered.length,
-    });
+    filtered = filterByRange(filtered, viewRange, (video) => video.viewCount);
   }
 
   // Filter by channel subscriber count
-  if (filters.minSubscribers && filters.minSubscribers !== 'Tất cả' && filters.minSubscribers !== undefined) {
+  if (filters.minSubscribers && filters.minSubscribers !== 'Tất cả') {
     const subRange = parseFilterRange(filters.minSubscribers);
-    filtered = filtered.filter((video) => {
-      const subs = parseCount(video.channelSubscriberCount);
-      const passesMin = subs >= subRange.min;
-      const passesMax = subRange.max === Infinity ? true : subs <= subRange.max;
-      return passesMin && passesMax;
-    });
+    filtered = filterByRange(filtered, subRange, (video) => video.channelSubscriberCount);
   }
 
   return filtered;
@@ -128,14 +129,9 @@ export function filterChannels(channels: ChannelMetadata[], filters: FilterOptio
   let filtered = [...channels];
 
   // Filter by subscriber count
-  if (filters.minSubscribers && filters.minSubscribers !== 'Tất cả' && filters.minSubscribers !== undefined) {
+  if (filters.minSubscribers && filters.minSubscribers !== 'Tất cả') {
     const subRange = parseFilterRange(filters.minSubscribers);
-    filtered = filtered.filter((channel) => {
-      const subs = parseCount(channel.subscriberCount);
-      const passesMin = subs >= subRange.min;
-      const passesMax = subRange.max === Infinity ? true : subs <= subRange.max;
-      return passesMin && passesMax;
-    });
+    filtered = filterByRange(filtered, subRange, (channel) => channel.subscriberCount);
   }
 
   return filtered;
@@ -145,41 +141,18 @@ export function filterChannels(channels: ChannelMetadata[], filters: FilterOptio
  * Sort videos based on sort option
  */
 export function sortVideos(videos: RelatedVideo[], sortBy: string): RelatedVideo[] {
-  const sorted = [...videos];
-
   switch (sortBy) {
     case 'views':
-      return sorted.sort((a, b) => {
-        const viewsA = parseCount(a.viewCount);
-        const viewsB = parseCount(b.viewCount);
-        return viewsB - viewsA; // Descending
-      });
-    
+      return sortByCount(videos, (video) => video.viewCount, false);
     case 'views-asc':
-      return sorted.sort((a, b) => {
-        const viewsA = parseCount(a.viewCount);
-        const viewsB = parseCount(b.viewCount);
-        return viewsA - viewsB; // Ascending
-      });
-    
+      return sortByCount(videos, (video) => video.viewCount, true);
     case 'subscribers':
-      return sorted.sort((a, b) => {
-        const subsA = parseCount(a.channelSubscriberCount);
-        const subsB = parseCount(b.channelSubscriberCount);
-        return subsB - subsA; // Descending
-      });
-    
+      return sortByCount(videos, (video) => video.channelSubscriberCount, false);
     case 'subscribers-asc':
-      return sorted.sort((a, b) => {
-        const subsA = parseCount(a.channelSubscriberCount);
-        const subsB = parseCount(b.channelSubscriberCount);
-        return subsA - subsB; // Ascending
-      });
-    
+      return sortByCount(videos, (video) => video.channelSubscriberCount, true);
     case 'relevance':
     default:
-      // Keep original order (relevance order from API)
-      return sorted;
+      return [...videos];
   }
 }
 
@@ -187,27 +160,13 @@ export function sortVideos(videos: RelatedVideo[], sortBy: string): RelatedVideo
  * Sort channels based on sort option
  */
 export function sortChannels(channels: ChannelMetadata[], sortBy: string): ChannelMetadata[] {
-  const sorted = [...channels];
-
   switch (sortBy) {
     case 'subscribers':
-      return sorted.sort((a, b) => {
-        const subsA = parseCount(a.subscriberCount);
-        const subsB = parseCount(b.subscriberCount);
-        return subsB - subsA; // Descending
-      });
-    
+      return sortByCount(channels, (channel) => channel.subscriberCount, false);
     case 'subscribers-asc':
-      return sorted.sort((a, b) => {
-        const subsA = parseCount(a.subscriberCount);
-        const subsB = parseCount(b.subscriberCount);
-        return subsA - subsB; // Ascending
-      });
-    
+      return sortByCount(channels, (channel) => channel.subscriberCount, true);
     case 'relevance':
     default:
-      // Keep original order
-      return sorted;
+      return [...channels];
   }
 }
-
