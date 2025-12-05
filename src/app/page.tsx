@@ -7,8 +7,10 @@ import RelatedVideos from '@/components/RelatedVideos';
 import RelatedChannels from '@/components/RelatedChannels';
 import Tabs from '@/components/Tabs';
 import MetadataModal from '@/components/MetadataModal';
-import { VideoMetadata, RelatedVideo, ChannelMetadata } from '@/types/youtube';
-import { getCachedMetadata, cacheMetadata, getCachedRelatedVideos, cacheRelatedVideos } from '@/lib/cache';
+import { VideoMetadata, RelatedVideo, ChannelMetadata, FilterOptions } from '@/types/youtube';
+import { getCachedMetadata, cacheMetadata, getCachedRelatedVideos, cacheRelatedVideos, clearCacheItem, CACHE_KEYS } from '@/lib/cache';
+import VideoFilters from '@/components/VideoFilters';
+import { filterVideos, filterChannels, sortVideos, sortChannels } from '@/lib/filterUtils';
 
 export default function Home() {
   const [videoMetadata, setVideoMetadata] = useState<VideoMetadata | null>(null);
@@ -20,6 +22,9 @@ export default function Home() {
   const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'videos' | 'channels'>('videos');
+  const [filterOptions, setFilterOptions] = useState<FilterOptions>({
+    sortBy: 'relevance',
+  });
 
   const handleSearch = async (videoId: string) => {
     setError('');
@@ -55,11 +60,24 @@ export default function Home() {
 
       // Check cache for related videos
       const cachedRelated = getCachedRelatedVideos(videoId);
-      if (cachedRelated) {
+      // Check if cached data has viewCount (new format) - if not, invalidate cache
+      const hasViewCountInCache = cachedRelated && cachedRelated.length > 0 && cachedRelated.some(v => v.viewCount !== undefined);
+      
+      if (cachedRelated && hasViewCountInCache) {
         console.log('📦 Using cached related videos for:', videoId);
+        console.log('📦 Cached videos sample:', cachedRelated.slice(0, 2).map(v => ({
+          videoId: v.videoId,
+          viewCount: v.viewCount,
+          hasViewCount: !!v.viewCount,
+        })));
         setRelatedVideos(cachedRelated);
         setIsLoadingRelated(false);
       } else {
+        // Clear old cache if it doesn't have viewCount
+        if (cachedRelated && !hasViewCountInCache) {
+          console.log('🔄 Invalidating old cache (no viewCount)');
+          clearCacheItem(CACHE_KEYS.RELATED_VIDEOS(videoId));
+        }
         // Fetch related videos from API
         const relatedResponse = await fetch(`/api/related-videos?videoId=${videoId}`);
 
@@ -69,6 +87,12 @@ export default function Home() {
         }
 
         const related: RelatedVideo[] = await relatedResponse.json();
+        console.log('📊 Fetched related videos:', related.map(v => ({
+          videoId: v.videoId,
+          title: v.title.substring(0, 40),
+          viewCount: v.viewCount,
+          channelSubscriberCount: v.channelSubscriberCount,
+        })));
         setRelatedVideos(related);
         cacheRelatedVideos(videoId, related); // Cache the result
         console.log('💾 Cached related videos for:', videoId);
@@ -152,13 +176,45 @@ export default function Home() {
           </section>
         )}
 
+        {/* Filters Section */}
+        {videoMetadata && (
+          <section className="px-6 pb-6 flex justify-center">
+            <VideoFilters
+              onFilterChange={setFilterOptions}
+              activeTab={activeTab}
+              filters={filterOptions}
+            />
+          </section>
+        )}
+
         {/* Related Content Section (Videos or Channels based on active tab) */}
         {videoMetadata && (
           <section className="px-6 pb-12 flex justify-center">
             {activeTab === 'videos' ? (
-              <RelatedVideos videos={relatedVideos} isLoading={isLoadingRelated} />
+              <RelatedVideos
+                videos={(() => {
+                  const filtered = filterVideos(relatedVideos, filterOptions);
+                  const sorted = sortVideos(filtered, filterOptions.sortBy || 'relevance');
+                  console.log('[Page Debug] Filtering videos:', {
+                    originalCount: relatedVideos.length,
+                    filteredCount: filtered.length,
+                    sortedCount: sorted.length,
+                    filterOptions,
+                  });
+                  return sorted;
+                })()}
+                isLoading={isLoadingRelated}
+              />
             ) : (
-              <RelatedChannels channels={relatedChannels} isLoading={isLoadingChannels} />
+              <RelatedChannels
+                channels={
+                  sortChannels(
+                    filterChannels(relatedChannels, filterOptions),
+                    filterOptions.sortBy || 'relevance'
+                  )
+                }
+                isLoading={isLoadingChannels}
+              />
             )}
           </section>
         )}

@@ -77,16 +77,82 @@ export async function searchRelatedVideos(
       return [];
     }
 
-    // Filter out the original video and map results
-    const relatedVideos: RelatedVideo[] = searchResponse.data.items
+    // Filter out the original video and get video IDs
+    const videoIds = searchResponse.data.items
       .filter((item) => item.id?.videoId && item.id.videoId !== videoId)
       .slice(0, maxResults)
-      .map((item) => ({
-        videoId: item.id!.videoId!,
-        title: item.snippet!.title || '',
-        thumbnail: item.snippet!.thumbnails?.medium?.url || item.snippet!.thumbnails?.default?.url || '',
-        description: item.snippet!.description || '',
-      }));
+      .map((item) => item.id!.videoId!);
+
+    if (videoIds.length === 0) {
+      return [];
+    }
+
+    // Fetch video statistics and channel IDs
+    const videosResponse = await youtube.videos.list({
+      part: ['statistics', 'snippet'],
+      id: videoIds,
+    });
+
+    if (!videosResponse.data.items) {
+      return [];
+    }
+
+    // Extract unique channel IDs
+    const channelIds = Array.from(
+      new Set(
+        videosResponse.data.items
+          .map((item) => item.snippet?.channelId)
+          .filter((id): id is string => !!id)
+      )
+    );
+
+    // Fetch channel statistics for subscriber counts
+    let channelStatsMap: Map<string, string> = new Map();
+    if (channelIds.length > 0) {
+      const channelsResponse = await youtube.channels.list({
+        part: ['statistics'],
+        id: channelIds,
+      });
+
+      if (channelsResponse.data.items) {
+        channelsResponse.data.items.forEach((channel) => {
+          if (channel.id && channel.statistics?.subscriberCount) {
+            channelStatsMap.set(channel.id, channel.statistics.subscriberCount);
+          }
+        });
+      }
+    }
+
+    // Map results with statistics
+    const relatedVideos: RelatedVideo[] = videosResponse.data.items.map((item) => {
+      const channelId = item.snippet?.channelId;
+      const rawViewCount = item.statistics?.viewCount;
+      const videoData = {
+        videoId: item.id!,
+        title: item.snippet?.title || '',
+        thumbnail: item.snippet?.thumbnails?.medium?.url || item.snippet?.thumbnails?.default?.url || '',
+        description: item.snippet?.description || '',
+        viewCount: rawViewCount || undefined,
+        channelId: channelId || undefined,
+        channelSubscriberCount: channelId ? channelStatsMap.get(channelId) : undefined,
+      };
+      
+      // Debug log for ALL videos to see what we're getting
+      console.log('[YouTube API Debug] Video data:', {
+        videoId: videoData.videoId,
+        title: videoData.title.substring(0, 40),
+        rawViewCount: rawViewCount,
+        hasStatistics: !!item.statistics,
+        statisticsKeys: item.statistics ? Object.keys(item.statistics) : [],
+        viewCount: videoData.viewCount,
+        channelSubscriberCount: videoData.channelSubscriberCount,
+      });
+      
+      return videoData;
+    });
+
+    console.log('[YouTube API Debug] Total videos fetched:', relatedVideos.length);
+    console.log('[YouTube API Debug] Videos with viewCount:', relatedVideos.filter(v => v.viewCount).length);
 
     return relatedVideos;
   } catch (error) {

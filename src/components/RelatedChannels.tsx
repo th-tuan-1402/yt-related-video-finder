@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChannelMetadata } from '@/types/youtube';
+import { formatNumber } from '@/lib/filterUtils';
 
 interface RelatedChannelsProps {
   channels: ChannelMetadata[];
@@ -61,13 +62,13 @@ export default function RelatedChannels({ channels, isLoading }: RelatedChannels
             <div className="flex items-center space-x-4 text-xs text-[var(--color-text-muted)] mb-3">
               <div className="flex items-center">
                 <span className="font-medium text-[var(--color-text-primary)] mr-1">
-                  {parseInt(channel.subscriberCount).toLocaleString()}
+                  {formatNumber(channel.subscriberCount)}
                 </span>
                 subscribers
               </div>
               <div className="flex items-center">
                 <span className="font-medium text-[var(--color-text-primary)] mr-1">
-                  {parseInt(channel.videoCount).toLocaleString()}
+                  {formatNumber(channel.videoCount)}
                 </span>
                 videos
               </div>
