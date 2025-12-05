@@ -148,7 +148,7 @@ export default function Home() {
         {/* Tabs Section */}
         {videoMetadata && (
           <section className="px-6 pb-8 flex justify-center">
-            <Tabs activeTab={activeTab} onTabChange={setActiveTab} />
+            <Tabs activeTab={activeTab} onTabChange={setActiveTab} channelsCount={relatedChannels.length} />
           </section>
         )}
 

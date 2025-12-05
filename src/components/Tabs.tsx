@@ -3,9 +3,10 @@ import React from 'react';
 interface TabsProps {
   activeTab: 'videos' | 'channels';
   onTabChange: (tab: 'videos' | 'channels') => void;
+  channelsCount?: number;
 }
 
-export default function Tabs({ activeTab, onTabChange }: TabsProps) {
+export default function Tabs({ activeTab, onTabChange, channelsCount }: TabsProps) {
   return (
     <div className="flex justify-center mb-8">
       <div className="glass rounded-full p-1 flex space-x-1">
@@ -26,6 +27,11 @@ export default function Tabs({ activeTab, onTabChange }: TabsProps) {
             }`}
         >
           Kênh Liên Quan
+          {channelsCount !== undefined && channelsCount > 0 && (
+            <span className="ml-2 px-2 py-0.5 rounded-full bg-white/20 text-xs font-semibold">
+              {channelsCount}
+            </span>
+          )}
         </button>
       </div>
     </div>
