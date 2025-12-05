@@ -1,11 +1,6 @@
 import { NextResponse } from 'next/server';
 import { google } from 'googleapis';
 
-const youtube = google.youtube({
-  version: 'v3',
-  auth: process.env.YOUTUBE_API_KEY,
-});
-
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const videoId = searchParams.get('videoId');
@@ -13,6 +8,19 @@ export async function GET(request: Request) {
   if (!videoId) {
     return NextResponse.json({ error: 'Video ID is required' }, { status: 400 });
   }
+
+  if (!process.env.YOUTUBE_API_KEY) {
+    return NextResponse.json(
+      { error: 'YouTube API key not configured' },
+      { status: 500 }
+    );
+  }
+
+  // Initialize YouTube client with validated API key
+  const youtube = google.youtube({
+    version: 'v3',
+    auth: process.env.YOUTUBE_API_KEY,
+  });
 
   try {
     // --- STEP 1: Analyze Video (Get tags & channelId) ---
@@ -43,7 +51,7 @@ export async function GET(request: Request) {
     const searchResponse = await youtube.search.list({
       part: ['id'],
       q: searchQuery,
-      type: ['channel'],
+      type: 'channel' as any, // YouTube API expects string, but TypeScript types expect array
       maxResults: 5,
       relevanceLanguage: 'vi', // As per user request/code sample
     });
@@ -68,16 +76,18 @@ export async function GET(request: Request) {
       id: channelIds,
     });
 
-    const channels = channelsResponse.data.items?.map(channel => ({
-      id: channel.id,
-      title: channel.snippet?.title,
-      customUrl: channel.snippet?.customUrl || 'N/A',
-      description: channel.snippet?.description,
-      thumbnail: channel.snippet?.thumbnails?.default?.url,
-      subscriberCount: channel.statistics?.subscriberCount || 'Hidden',
-      videoCount: channel.statistics?.videoCount,
-      viewCount: channel.statistics?.viewCount,
-    })) || [];
+    const channels = channelsResponse.data.items
+      ?.filter(channel => channel.id) // Filter out channels without ID
+      ?.map(channel => ({
+        id: channel.id!,
+        title: channel.snippet?.title || 'Unknown Channel',
+        customUrl: channel.snippet?.customUrl || 'N/A',
+        description: channel.snippet?.description || '',
+        thumbnail: channel.snippet?.thumbnails?.default?.url || channel.snippet?.thumbnails?.medium?.url || '',
+        subscriberCount: channel.statistics?.subscriberCount || '0',
+        videoCount: channel.statistics?.videoCount || '0',
+        viewCount: channel.statistics?.viewCount,
+      })) || [];
 
     return NextResponse.json(channels);
   } catch (error) {

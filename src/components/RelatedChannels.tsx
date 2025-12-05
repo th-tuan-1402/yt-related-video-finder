@@ -44,19 +44,27 @@ export default function RelatedChannels({ channels, isLoading }: RelatedChannels
           className="glass rounded-xl p-6 flex items-start space-x-4 hover:bg-white/5 transition-all duration-300 group hover:scale-[1.02] hover:shadow-xl border border-transparent hover:border-[var(--color-accent-primary)]/30"
         >
           <div className="relative">
-            <img
-              src={channel.thumbnail}
-              alt={channel.title}
-              className="w-16 h-16 rounded-full object-cover border-2 border-[var(--color-border)] group-hover:border-[var(--color-accent-primary)] transition-colors"
-            />
+            {channel.thumbnail ? (
+              <img
+                src={channel.thumbnail}
+                alt={channel.title || 'Channel'}
+                className="w-16 h-16 rounded-full object-cover border-2 border-[var(--color-border)] group-hover:border-[var(--color-accent-primary)] transition-colors"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-[var(--color-bg-secondary)] border-2 border-[var(--color-border)] flex items-center justify-center">
+                <svg className="w-8 h-8 text-[var(--color-text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+            )}
           </div>
 
           <div className="flex-1 min-w-0">
             <h3 className="text-lg font-semibold text-[var(--color-text-primary)] truncate group-hover:text-[var(--color-accent-primary)] transition-colors">
-              {channel.title}
+              {channel.title || 'Unknown Channel'}
             </h3>
             <p className="text-sm text-[var(--color-text-secondary)] mb-2">
-              {channel.customUrl}
+              {channel.customUrl || 'N/A'}
             </p>
 
             <div className="flex items-center space-x-4 text-xs text-[var(--color-text-muted)] mb-3">

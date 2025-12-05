@@ -67,7 +67,7 @@ export async function searchRelatedVideos(
     const searchResponse = await youtube.search.list({
       part: ['snippet'],
       q: searchQuery,
-      type: ['video'],
+      type: 'video' as any, // YouTube API expects string, but TypeScript types expect array
       maxResults: maxResults + 5, // Get extra to filter out the original
       order: 'relevance',
       relevanceLanguage: 'vi', // Prioritize Vietnamese content
