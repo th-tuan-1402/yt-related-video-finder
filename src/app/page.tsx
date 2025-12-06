@@ -221,15 +221,6 @@ export default function Home() {
           </section>
         )}
 
-        {/* Footer */}
-        <footer className="py-12 px-6 text-center text-[var(--color-text-muted)] text-sm border-t border-[var(--color-border)] mt-20">
-          <p>
-            Built with Next.js 14 & YouTube Data API v3
-          </p>
-          <p className="mt-2">
-            Uses metadata-based search as a workaround for deprecated relatedToVideoId parameter
-          </p>
-        </footer>
       </div>
 
       {/* Metadata Modal */}
