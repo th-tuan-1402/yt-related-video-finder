@@ -142,11 +142,6 @@ export default function Home() {
             <p className="text-lg text-[var(--color-text-secondary)] max-w-2xl mx-auto">
               Tìm kiếm video liên quan thông minh dựa trên metadata và tags
             </p>
-
-            {/* Info badge */}
-            <div className="mt-6 inline-block px-4 py-2 rounded-full glass text-sm text-[var(--color-text-secondary)]">
-              <span className="text-[var(--color-accent-primary)] font-medium">💡 Mẹo:</span> Google đã loại bỏ relatedToVideoId API. App này sử dụng metadata-based search.
-            </div>
           </div>
         </header>
 
@@ -226,15 +221,6 @@ export default function Home() {
           </section>
         )}
 
-        {/* Footer */}
-        <footer className="py-12 px-6 text-center text-[var(--color-text-muted)] text-sm border-t border-[var(--color-border)] mt-20">
-          <p>
-            Built with Next.js 14 & YouTube Data API v3
-          </p>
-          <p className="mt-2">
-            Uses metadata-based search as a workaround for deprecated relatedToVideoId parameter
-          </p>
-        </footer>
       </div>
 
       {/* Metadata Modal */}
