@@ -4,24 +4,36 @@ import { useState } from 'react';
 import VideoSearch from '@/components/VideoSearch';
 import VideoDetails from '@/components/VideoDetails';
 import RelatedVideos from '@/components/RelatedVideos';
+import RelatedChannels from '@/components/RelatedChannels';
+import Tabs from '@/components/Tabs';
 import MetadataModal from '@/components/MetadataModal';
-import { VideoMetadata, RelatedVideo } from '@/types/youtube';
-import { getCachedMetadata, cacheMetadata, getCachedRelatedVideos, cacheRelatedVideos } from '@/lib/cache';
+import { VideoMetadata, RelatedVideo, ChannelMetadata, FilterOptions } from '@/types/youtube';
+import { getCachedMetadata, cacheMetadata, getCachedRelatedVideos, cacheRelatedVideos, clearCacheItem, CACHE_KEYS } from '@/lib/cache';
+import VideoFilters from '@/components/VideoFilters';
+import { filterVideos, filterChannels, sortVideos, sortChannels } from '@/lib/filterUtils';
 
 export default function Home() {
   const [videoMetadata, setVideoMetadata] = useState<VideoMetadata | null>(null);
   const [relatedVideos, setRelatedVideos] = useState<RelatedVideo[]>([]);
+  const [relatedChannels, setRelatedChannels] = useState<ChannelMetadata[]>([]);
   const [isLoadingMetadata, setIsLoadingMetadata] = useState(false);
   const [isLoadingRelated, setIsLoadingRelated] = useState(false);
+  const [isLoadingChannels, setIsLoadingChannels] = useState(false);
   const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'videos' | 'channels'>('videos');
+  const [filterOptions, setFilterOptions] = useState<FilterOptions>({
+    sortBy: 'relevance',
+  });
 
   const handleSearch = async (videoId: string) => {
     setError('');
     setVideoMetadata(null);
     setRelatedVideos([]);
+    setRelatedChannels([]);
     setIsLoadingMetadata(true);
     setIsLoadingRelated(true);
+    setIsLoadingChannels(true);
 
     try {
       // Check cache for metadata
@@ -48,11 +60,31 @@ export default function Home() {
 
       // Check cache for related videos
       const cachedRelated = getCachedRelatedVideos(videoId);
-      if (cachedRelated) {
+      // Check if cached data has viewCount (new format) - verify that all or most videos have it
+      // Require at least 80% of videos to have viewCount, or all if there are 5 or fewer videos
+      const hasViewCountInCache = cachedRelated && cachedRelated.length > 0 && (() => {
+        const videosWithViewCount = cachedRelated.filter(v => v.viewCount !== undefined).length;
+        const threshold = cachedRelated.length <= 5 
+          ? cachedRelated.length // All videos must have viewCount if 5 or fewer
+          : Math.ceil(cachedRelated.length * 0.8); // At least 80% must have viewCount
+        return videosWithViewCount >= threshold;
+      })();
+      
+      if (cachedRelated && hasViewCountInCache) {
         console.log('📦 Using cached related videos for:', videoId);
+        console.log('📦 Cached videos sample:', cachedRelated.slice(0, 2).map(v => ({
+          videoId: v.videoId,
+          viewCount: v.viewCount,
+          hasViewCount: !!v.viewCount,
+        })));
         setRelatedVideos(cachedRelated);
         setIsLoadingRelated(false);
       } else {
+        // Clear old cache if it doesn't have viewCount
+        if (cachedRelated && !hasViewCountInCache) {
+          console.log('🔄 Invalidating old cache (no viewCount)');
+          clearCacheItem(CACHE_KEYS.RELATED_VIDEOS(videoId));
+        }
         // Fetch related videos from API
         const relatedResponse = await fetch(`/api/related-videos?videoId=${videoId}`);
 
@@ -62,15 +94,35 @@ export default function Home() {
         }
 
         const related: RelatedVideo[] = await relatedResponse.json();
+        console.log('📊 Fetched related videos:', related.map(v => ({
+          videoId: v.videoId,
+          title: v.title.substring(0, 40),
+          viewCount: v.viewCount,
+          channelSubscriberCount: v.channelSubscriberCount,
+        })));
         setRelatedVideos(related);
         cacheRelatedVideos(videoId, related); // Cache the result
         console.log('💾 Cached related videos for:', videoId);
         setIsLoadingRelated(false);
       }
+
+      // Fetch related channels from API
+      const channelsResponse = await fetch(`/api/related-channels?videoId=${videoId}`);
+
+      if (!channelsResponse.ok) {
+        const errorData = await channelsResponse.json();
+        throw new Error(errorData.error || 'Failed to fetch related channels');
+      }
+
+      const channels: ChannelMetadata[] = await channelsResponse.json();
+      setRelatedChannels(channels);
+      console.log('✅ Fetched related channels for:', videoId);
+      setIsLoadingChannels(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       setIsLoadingMetadata(false);
       setIsLoadingRelated(false);
+      setIsLoadingChannels(false);
     }
   };
 
@@ -100,7 +152,7 @@ export default function Home() {
 
         {/* Search Section */}
         <section className="px-6 pb-12 flex justify-center">
-          <VideoSearch onSearch={handleSearch} isLoading={isLoadingMetadata || isLoadingRelated} />
+          <VideoSearch onSearch={handleSearch} isLoading={isLoadingMetadata || isLoadingRelated || isLoadingChannels} />
         </section>
 
         {/* Error Message */}
@@ -124,10 +176,53 @@ export default function Home() {
           </section>
         )}
 
-        {/* Related Videos Section */}
-        {(relatedVideos.length > 0 || isLoadingRelated) && (
+        {/* Tabs Section */}
+        {videoMetadata && (
+          <section className="px-6 pb-8 flex justify-center">
+            <Tabs activeTab={activeTab} onTabChange={setActiveTab} channelsCount={relatedChannels.length} />
+          </section>
+        )}
+
+        {/* Filters Section */}
+        {videoMetadata && (
+          <section className="px-6 pb-6 flex justify-center">
+            <VideoFilters
+              onFilterChange={setFilterOptions}
+              activeTab={activeTab}
+              filters={filterOptions}
+            />
+          </section>
+        )}
+
+        {/* Related Content Section (Videos or Channels based on active tab) */}
+        {videoMetadata && (
           <section className="px-6 pb-12 flex justify-center">
-            <RelatedVideos videos={relatedVideos} isLoading={isLoadingRelated} />
+            {activeTab === 'videos' ? (
+              <RelatedVideos
+                videos={(() => {
+                  const filtered = filterVideos(relatedVideos, filterOptions);
+                  const sorted = sortVideos(filtered, filterOptions.sortBy || 'relevance');
+                  console.log('[Page Debug] Filtering videos:', {
+                    originalCount: relatedVideos.length,
+                    filteredCount: filtered.length,
+                    sortedCount: sorted.length,
+                    filterOptions,
+                  });
+                  return sorted;
+                })()}
+                isLoading={isLoadingRelated}
+              />
+            ) : (
+              <RelatedChannels
+                channels={
+                  sortChannels(
+                    filterChannels(relatedChannels, filterOptions),
+                    filterOptions.sortBy || 'relevance'
+                  )
+                }
+                isLoading={isLoadingChannels}
+              />
+            )}
           </section>
         )}
 

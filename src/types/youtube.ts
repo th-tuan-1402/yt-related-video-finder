@@ -47,4 +47,26 @@ export interface RelatedVideo {
   title: string;
   thumbnail: string;
   description: string;
+  viewCount?: string;
+  channelId?: string;
+  channelSubscriberCount?: string;
+}
+
+export interface ChannelMetadata {
+  id: string;
+  title: string;
+  customUrl: string;
+  description: string;
+  thumbnail: string;
+  subscriberCount: string;
+  videoCount: string;
+  viewCount?: string;
+}
+
+export interface FilterOptions {
+  minViews?: string;
+  maxViews?: string;
+  minSubscribers?: string;
+  maxSubscribers?: string;
+  sortBy?: 'relevance' | 'views' | 'views-asc' | 'subscribers' | 'subscribers-asc';
 }

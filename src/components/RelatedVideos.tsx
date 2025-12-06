@@ -2,6 +2,7 @@
 
 import { RelatedVideo } from '@/types/youtube';
 import Image from 'next/image';
+import { formatNumber } from '@/lib/filterUtils';
 
 interface RelatedVideosProps {
   videos: RelatedVideo[];
@@ -77,6 +78,33 @@ export default function RelatedVideos({ videos, isLoading }: RelatedVideosProps)
               <h3 className="font-semibold text-[var(--color-text-primary)] line-clamp-2 mb-2 group-hover:text-[var(--color-accent-primary)] transition-colors">
                 {video.title}
               </h3>
+
+              {/* Statistics */}
+              <div className="flex items-center gap-4 text-xs text-[var(--color-text-muted)] mb-2">
+                {video.viewCount && (
+                  <div className="flex items-center">
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    <span className="font-medium text-[var(--color-text-primary)]">
+                      {formatNumber(video.viewCount)}
+                    </span>
+                    <span className="ml-1">lượt xem</span>
+                  </div>
+                )}
+                {video.channelSubscriberCount && (
+                  <div className="flex items-center">
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    <span className="font-medium text-[var(--color-text-primary)]">
+                      {formatNumber(video.channelSubscriberCount)}
+                    </span>
+                    <span className="ml-1">subscriber</span>
+                  </div>
+                )}
+              </div>
 
               {video.description && (
                 <p className="text-sm text-[var(--color-text-secondary)] line-clamp-2">
