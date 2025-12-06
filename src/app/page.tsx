@@ -142,11 +142,6 @@ export default function Home() {
             <p className="text-lg text-[var(--color-text-secondary)] max-w-2xl mx-auto">
               Tìm kiếm video liên quan thông minh dựa trên metadata và tags
             </p>
-
-            {/* Info badge */}
-            <div className="mt-6 inline-block px-4 py-2 rounded-full glass text-sm text-[var(--color-text-secondary)]">
-              <span className="text-[var(--color-accent-primary)] font-medium">💡 Mẹo:</span> Google đã loại bỏ relatedToVideoId API. App này sử dụng metadata-based search.
-            </div>
           </div>
         </header>
 
